@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from pinecone_db import store_text, search_similar
+from pinecone_db import store_text, search_similar, assign_labels_to_text
 
 app = FastAPI()
 
@@ -9,21 +9,14 @@ class TextRequest(BaseModel):
 
 @app.post("/classify")
 async def classify_text(request: TextRequest):
+    """
+    入力された問題文に対して、類似検索を行い、推奨ラベルを返すAPI
+    """
     text = request.text
+    suggested_labels = assign_labels_to_text(text)
 
-    # 問題文からラベルを分類する
-    # Pineconeで検索
-    similar_texts = search_similar(text)
+    return {"input": text, "suggested_labels": suggested_labels}
 
-    if not similar_texts:
-        # 類似テキストが見つからなければ、新たに格納してラベルを保存
-        store_text(text, id=text[:10].encode('utf-8').decode('ascii', 'ignore') or "default_id")
-        label = "新しいラベル"
-    else:
-        # 類似テキストが見つかった場合、そのラベルを使う
-        label = similar_texts[0]["text"]
-
-    return {"input": text, "predicted_label": label}
 
 @app.post("/store")
 async def store_text_api(request: TextRequest):
