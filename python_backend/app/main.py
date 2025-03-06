@@ -11,10 +11,19 @@ class TextRequest(BaseModel):
 async def classify_text(request: TextRequest):
     text = request.text
 
-    # Pineconeで類似検索
+    # 問題文からラベルを分類する
+    # Pineconeで検索
     similar_texts = search_similar(text)
 
-    return {"input": text, "similar_texts": similar_texts}
+    if not similar_texts:
+        # 類似テキストが見つからなければ、新たに格納してラベルを保存
+        store_text(text, id=text[:10].encode('utf-8').decode('ascii', 'ignore') or "default_id")
+        label = "新しいラベル"
+    else:
+        # 類似テキストが見つかった場合、そのラベルを使う
+        label = similar_texts[0]["text"]
+
+    return {"input": text, "predicted_label": label}
 
 @app.post("/store")
 async def store_text_api(request: TextRequest):
@@ -23,7 +32,9 @@ async def store_text_api(request: TextRequest):
     id = text[:10].encode('utf-8').decode('ascii', 'ignore') or "default_id"
     store_text(text, id=id)  # 簡単なID付与（最初の10文字）
 
-    return {"message": "Text stored successfully!", "text": text}
+    # Pineconeで類似検索
+    similar_texts = search_similar(text)
+    return {"input": text, "similar_texts": similar_texts}
 
 if __name__ == "__main__":
     import uvicorn
