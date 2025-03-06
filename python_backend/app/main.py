@@ -19,7 +19,9 @@ async def classify_text(request: TextRequest):
 @app.post("/store")
 async def store_text_api(request: TextRequest):
     text = request.text
-    store_text(text, id=text[:10])  # 簡単なID付与（最初の10文字）
+    # IDが空でないことを確認する
+    id = text[:10].encode('utf-8').decode('ascii', 'ignore') or "default_id"
+    store_text(text, id=id)  # 簡単なID付与（最初の10文字）
 
     return {"message": "Text stored successfully!", "text": text}
 

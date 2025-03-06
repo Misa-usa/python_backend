@@ -10,7 +10,7 @@ index_name = 'myindex'
 if index_name not in pc.list_indexes().names():
     pc.create_index(
     name=index_name,
-    dimension=1536,
+    dimension=384,
     metric='euclidean',
     spec=ServerlessSpec(
         cloud='aws',
@@ -25,7 +25,7 @@ index = pc.Index(index_name)
 def store_text(text: str, id: str):
     """テキストをベクトル化してPineconeに保存"""
     vector = classify_text(text)  # 埋め込みベクトルを取得
-    print('record:'+ vector)
+    print('record:'+ str(vector))
     index.upsert([(id, vector, {"text": text})])  # Pineconeにアップサート
 
 def search_similar(text: str, top_k=3):
