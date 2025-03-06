@@ -1,3 +1,4 @@
+import uuid
 from fastapi import FastAPI
 from pydantic import BaseModel
 from pinecone_db import store_text, search_similar
@@ -6,6 +7,15 @@ app = FastAPI()
 
 class TextRequest(BaseModel):
     text: str
+
+class StoreRequest(BaseModel):
+    text: str
+    labels: list[str]  # ユーザーが確定したラベル
+
+#=========確認用================
+# class SimilarRequest(BaseModel):
+#     text: str
+#     labels: list[str]  # 確認したいラベル
 
 @app.post("/classify")
 async def classify_text(request: TextRequest):
@@ -28,13 +38,37 @@ async def classify_text(request: TextRequest):
 @app.post("/store")
 async def store_text_api(request: TextRequest):
     text = request.text
-    # IDが空でないことを確認する
-    id = text[:10].encode('utf-8').decode('ascii', 'ignore') or "default_id"
-    store_text(text, id=id)  # 簡単なID付与（最初の10文字）
+    labels = request.labels
+    # IDはUUIDを使用
+    id = str(uuid.uuid4())
 
-    # Pineconeで類似検索
-    similar_texts = search_similar(text)
-    return {"input": text, "similar_texts": similar_texts}
+    # Pineconeに保存
+    store_text(text, labels, id)
+
+    # ラベルを使用した類似検索
+    similar_texts = search_similar(text, labels)
+    return {
+        "message": "Text stored successfully!",
+        "text": text,
+        "labels": labels,
+        "similar_texts": similar_texts
+    }
+
+
+#===========確認用=============
+# @app.post("/similar")
+# async def check_similar_texts(request: SimilarRequest):
+#     """ 保存せずに、指定されたラベルの範囲で類似検索を行うAPI """
+#     text = request.text
+#     labels = request.labels
+
+#     similar_texts = search_similar(text, labels)
+
+#     return {
+#         "input": text,
+#         "labels": labels,
+#         "similar_texts": similar_texts
+#     }
 
 if __name__ == "__main__":
     import uvicorn
