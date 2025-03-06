@@ -11,14 +11,14 @@ pc = Pinecone(api_key="pcsk_4wZuZE_KHMfWqySwMKQKUk3q7q4tHjfBe9mAb5itrxvPTarNCTiv
 index_name = 'myindex'
 if index_name not in pc.list_indexes().names():
     pc.create_index(
-    name=index_name,
-    dimension=384,
-    metric='euclidean',
-    spec=ServerlessSpec(
-        cloud='aws',
-        region='us-east-1'  # 利用可能なリージョンに変更
+        name=index_name,
+        dimension=384,  # 埋め込みベクトルの次元数
+        metric='euclidean',
+        spec=ServerlessSpec(
+            cloud='aws',
+            region='us-east-1'  # 利用可能なリージョンに変更
+        )
     )
-)
 
 # インデックスに接続
 index = pc.Index(index_name)
@@ -57,25 +57,18 @@ def assign_labels_to_text(text, threshold=0.7, top_k=4):
 def store_text(text: str, id: str):
     """テキストをベクトル化してPineconeに保存"""
     vector = classify_text(text)  # 埋め込みベクトルを取得
-    print('record:'+ str(vector))
+    print('record:' + str(vector))
+    # メタデータに text を含めて Pinecone に保存
     index.upsert([(id, vector, {"text": text})])  # Pineconeにアップサート
 
 def search_similar(text: str, top_k=3):
     """テキストの埋め込みを作成し、類似検索"""
     vector = classify_text(text)  # 埋め込みベクトルを取得
-    print('search:' + str(vector))
+    print('search:'+ str(vector))
     results = index.query(vector=vector, top_k=top_k, include_metadata=True)  # クエリ実行
     print('search:'+ str(results))
     # 結果を整形
-    return [{"score": match["score"], "text": match["metadata"]["text"]} for match in results["matches"]]
-
-
-
-
-
-
-
-
+    return [{"score": match["score"], "text": match["metadata"].get("text", "No Text Found")} for match in results["matches"]]
 
 #========ラベルの保存コード=========
 
