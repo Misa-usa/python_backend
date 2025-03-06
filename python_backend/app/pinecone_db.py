@@ -1,4 +1,4 @@
-from bert_model import embed_text
+from bert_model import classify_text
 import os
 from pinecone import Pinecone, ServerlessSpec
 
@@ -24,13 +24,13 @@ index = pc.Index(index_name)
 
 def store_text(text: str, id: str):
     """テキストをベクトル化してPineconeに保存"""
-    vector = embed_text(text)  # 埋め込みベクトルを取得
+    vector = classify_text(text)  # 埋め込みベクトルを取得
     print('record:'+ vector)
     index.upsert([(id, vector, {"text": text})])  # Pineconeにアップサート
 
 def search_similar(text: str, top_k=3):
     """テキストの埋め込みを作成し、類似検索"""
-    vector = embed_text(text)  # 埋め込みベクトルを取得
+    vector = classify_text(text)  # 埋め込みベクトルを取得
     print('search:' + str(vector))
     results = index.query(vector=vector, top_k=top_k, include_metadata=True)  # クエリ実行
     print('search:'+ str(results))
