@@ -49,8 +49,6 @@ def assign_labels_to_text(text, threshold=0.7, top_k=4):
     if not labels:  # ラベルが見つからなかった場合
         labels = [("その他 - その他", 1.0)]  # デフォルトのラベルを追加
 
-    # 類似したラベルを問題文と一緒に保存
-    index.upsert([(text, text_vector, {"text": text, "labels": [label for label, _ in labels]})])
     return [label for label, _ in labels]  # ラベルを返す
 
 
