@@ -29,7 +29,7 @@ async def classify_text(request: TextRequest):
 
 
 @app.post("/store")
-async def store_text_api(request: TextRequest):
+async def store_text_api(request: StoreRequest):
     text = request.text
     labels = request.labels
     # IDはUUIDを使用
