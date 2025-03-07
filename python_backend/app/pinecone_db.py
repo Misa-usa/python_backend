@@ -49,6 +49,8 @@ def assign_labels_to_text(text, threshold=0.7, top_k=4):
     if not labels:  # ラベルが見つからなかった場合
         labels = [("その他 - その他", 1.0)]  # デフォルトのラベルを追加
 
+    print(text_vector)
+
     return [label for label, _ in labels]  # ラベルを返す
 
 
@@ -60,6 +62,8 @@ def store_text(text: str, labels: list[str], id: str):
     metadata = {"text": text, "labels": labels}
 
     index.upsert([(id, vector, metadata)])
+    print(vector)
+    print(id)
 
 def search_similar(text: str, labels: list[str], top_k=3):
     """
