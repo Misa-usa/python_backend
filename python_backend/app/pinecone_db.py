@@ -41,7 +41,12 @@ def assign_labels_to_text(text, threshold=0.7, top_k=4):
     labels = []
     for match in results['matches']:
         score = match['score']
-        label = match['metadata']['label']
+        
+        # 'label'が存在するかチェック
+        if 'label' in match['metadata']:
+            label = match['metadata']['label']
+        else:
+            continue  # 'label'がない場合、次のmatchへ進む
         
         if score >= threshold:  # スコアが閾値以上であれば、ラベルを保存
             labels.append((label, score))
@@ -52,6 +57,7 @@ def assign_labels_to_text(text, threshold=0.7, top_k=4):
     print(text_vector)
 
     return [label for label, _ in labels]  # ラベルを返す
+
 
 
 def store_text(text: str, labels: list[str], id: str):
