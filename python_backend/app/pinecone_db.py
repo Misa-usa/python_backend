@@ -24,7 +24,7 @@ if index_name not in pc.list_indexes().names():
 index = pc.Index(index_name)
 
 # 問題文にラベルを自動付け
-def assign_labels_to_text(text, threshold=0.7, top_k=4):
+def assign_labels_to_text(text, threshold=0.6, top_k=4):
     """
     問題文に対して複数のラベルを付ける関数
     :param text: 解析する問題文
@@ -34,6 +34,14 @@ def assign_labels_to_text(text, threshold=0.7, top_k=4):
     """
     # 問題文をベクトル化
     text_vector = classify_text(text)
+    # もし text_vector がリスト型ならば、そのまま使用
+    if isinstance(text_vector, list):
+        # そのまま使用
+        pass
+    else:
+        # ndarray の場合、tolist() を使ってリストに変換
+        text_vector = text_vector.tolist()  
+
     
     # Pineconeで類似するラベルを検索
     results = index.query(vector=text_vector, top_k=top_k, include_metadata=True)
