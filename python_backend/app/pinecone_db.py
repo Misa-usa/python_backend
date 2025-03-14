@@ -105,17 +105,31 @@ def search_similar(text: str, labels: list[str], top_k=3):
     # 類似検索を実行
     results = index.query(vector=vector, top_k=top_k, include_metadata=True, filter=filter_conditions)
 
+    # `matches` がない場合の処理
+    matches = results.get("matches", [])
+    if not matches:
+        print("No similar texts found.")
+        return []
+
     # 渡されたテキストと一致する問題は除外
     unique_results = []
-    for match in results["matches"]:
-        if match["metadata"]["text"] != text:
+    for match in matches:
+        metadata = match.get("metadata", {})  # metadata が存在しない場合は空の辞書を返す
+        stored_text = metadata.get("text", None)  # 'text' キーがない場合は None
+        
+        if stored_text is None:
+            print(f"Warning: Missing 'text' in metadata for match {match}")  # デバッグ用
+            continue  # 'text' がない場合はスキップ
+
+        if stored_text != text:
             unique_results.append({
                 "score": match["score"],
-                "text": match["metadata"]["text"],
-                "labels": match["metadata"].get("labels", [])  # ラベルも含める
+                "text": stored_text,
+                "labels": metadata.get("labels", [])  # ラベルも含める
             })
 
     return unique_results
+
 
 
 
