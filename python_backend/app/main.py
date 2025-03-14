@@ -55,11 +55,16 @@ async def store_text_api(request: StoreRequest):
     # Pineconeに保存
     store_text(text, labels, id)
 
+@app.post("/search")
+async def search_api(request: StoreRequest):
+    text = request.text
+    labels = request.labels
+
     # ラベルを使用した類似検索
     similar_texts = search_similar(text, labels)
     return JSONResponse(
         content={
-            "message": "Text stored successfully!",
+            "message": "Text searched successfully!",
             "text": text,
             "labels": labels,
             "similar_texts": similar_texts
