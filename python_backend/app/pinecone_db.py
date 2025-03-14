@@ -82,17 +82,34 @@ def store_text(text: str, labels: list[str], id: str):
 def search_similar(text: str, labels: list[str], top_k=3):
     """
     ラベルでフィルタリングしながら類似検索を実行
+    渡されたテキストと全く同じ問題は類題として採用しない
     """
+    # 渡されたテキストのベクトルを取得
     vector = classify_text(text)
 
     # ラベルでフィルタリング
     filter_conditions = {"labels": {"$in": labels}}
 
+    # 類似検索を実行
     results = index.query(vector=vector, top_k=top_k, include_metadata=True, filter=filter_conditions)
 
-    return [{"score": match["score"], "text": match["metadata"]["text"]} for match in results["matches"]]
-#========ラベルの保存コード=========
+    # 渡されたテキストと一致する問題は除外
+    unique_results = []
+    for match in results["matches"]:
+        if match["metadata"]["text"] != text:
+            unique_results.append({
+                "score": match["score"],
+                "text": match["metadata"]["text"],
+                "labels": match["metadata"].get("labels", [])  # ラベルも含める
+            })
 
+    return unique_results
+
+
+
+
+
+#========ラベルの保存コード=========
 # def store_labels(labels):
 #     """
 #     ラベルセットをPineconeに保存する
