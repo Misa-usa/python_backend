@@ -96,7 +96,7 @@ def search_similar(text: str, labels: list[str], top_k=3):
     """
     # 渡されたテキストのベクトルを取得
     vector = classify_text(text)
-    print(labels)
+    
     # ラベルでフィルタリング
     filter_conditions = {"labels": {"$in": labels}}
 
@@ -105,13 +105,17 @@ def search_similar(text: str, labels: list[str], top_k=3):
     
     # 渡されたテキストと一致する問題は除外
     unique_results = []
+    
     for match in results["matches"]:
-        # if match["metadata"]["text"] != text:
-        unique_results.append({
-            "score": match["score"],
-            "text": match["metadata"]["text"],
-            "labels": match["metadata"].get("labels", [])  # ラベルも含める
-        })
+        if "text" not in match["metadata"]:
+            continue
+
+        if match["metadata"]["text"] != text:
+            unique_results.append({
+                "score": match["score"],
+                "text": match["metadata"]["text"],
+                "labels": match["metadata"].get("labels", [])  # ラベルも含める
+            })
 
     return unique_results
 

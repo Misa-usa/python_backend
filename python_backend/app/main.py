@@ -59,9 +59,10 @@ async def store_text_api(request: StoreRequest):
 async def search_api(request: StoreRequest):
     text = request.text
     labels = request.labels
-    print(labels)
+    
     # ラベルを使用した類似検索
     similar_texts = search_similar(text, labels)
+    
     return JSONResponse(
         content={
             "message": "Text searched successfully!",
