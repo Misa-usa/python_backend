@@ -13,7 +13,7 @@ if index_name not in pc.list_indexes().names():
     pc.create_index(
         name=index_name,
         dimension=384,  # 埋め込みベクトルの次元数
-        metric='euclidean',
+        metric='cosine',
         spec=ServerlessSpec(
             cloud='aws',
             region='us-east-1'  # 利用可能なリージョンに変更
