@@ -1,11 +1,17 @@
-from bert_model import classify_text
+from vectorizer import vectorize_text
 import os
 from pinecone import Pinecone, ServerlessSpec
 import uuid
+from typing import List, Tuple
+from dotenv import load_dotenv
 
+load_dotenv()
+
+# 環境変数からAPIキーを取得
+pinecone_api_key = os.getenv("PINECONE_API_KEY")
 
 # Pineconeクラスのインスタンスを作成
-pc = Pinecone(api_key="pcsk_4wZuZE_KHMfWqySwMKQKUk3q7q4tHjfBe9mAb5itrxvPTarNCTivwWipj6gAmKwENL1iDQ")
+pc = Pinecone(api_key=pinecone_api_key)
 
 # インデックスが存在しない場合、作成する
 index_name = 'myindex'
@@ -23,7 +29,7 @@ if index_name not in pc.list_indexes().names():
 # インデックスに接続
 index = pc.Index(index_name)
 
-def assign_labels_to_text(text, threshold=0.74, top_k=4):
+def assign_labels_to_text(text: str, threshold: float=0.74, top_k: int=4) -> List[str]:
     """
     問題文に対して複数のラベルを付ける関数
     :param text: 解析する問題文
@@ -32,62 +38,44 @@ def assign_labels_to_text(text, threshold=0.74, top_k=4):
     :return: 類似度スコアが閾値以上のラベル
     """
     # 問題文をベクトル化
-    text_vector = classify_text(text)
-
-    if text_vector is None:
-        print("Error: text_vector is None.")
-        return []
-
-    if not isinstance(text_vector, list):
-        text_vector = text_vector.tolist()  
-
+    text_vector = vectorize_text(text)
     # Pineconeで類似するラベルを検索
     results = index.query(vector=text_vector, top_k=top_k, include_metadata=True)
-    
-    print("Query Results:", results)  # ここでPineconeからの結果を確認
+    #setは重複を許さないリスト
+    labels = set()
+    #matchesキーが取得できなければからリストを返す
+    for match in results.get("matches", []):
+        if match["score"] >= threshold and "labels" in match["metadata"]:
+            meta_labels = match["metadata"]["labels"]
+            #meta_labelsがstrならばlistにする
+            if isinstance(meta_labels, str):
+                meta_labels = [meta_labels]
+            labels.update(meta_labels)
 
-    labels = []
-    for match in results.get('matches', []):
-        score = match['score']
-        
-        # 'labels'が存在するかチェック
-        if 'labels' in match['metadata']:
-            labels_list = match['metadata']['labels']
-            
-            # labels_listが文字列の場合、リストに変換
-            if isinstance(labels_list, str):
-                labels_list = [labels_list]  # 文字列をリストに変換
-            
-        else:
-            print(f"No 'labels' found in metadata for match: {match}")  # デバッグ用
-            continue  # 'labels'がない場合、次のmatchへ進む
-
-        print(f"Checking labels: {labels_list}, score: {score}")  # デバッグ用
-
-        if score >= threshold:  # スコアが閾値以上であれば、ラベルを保存
-            for label in labels_list:
-                if label not in [l[0] for l in labels]:  # 既に追加されていない場合のみ追加
-                    labels.append((label, score))
-
-    if not labels:  # ラベルが見つからなかった場合
-        labels = [("その他 - その他", 1.0)]  # デフォルトのラベルを追加
-
-    print(f"Final labels: {labels}")  # デバッグ用
-    return [label for label, _ in labels]  # ラベルを返す
+    return list(labels) if labels else ["その他 - その他"]
 
 
 
 
-def store_text(text: str, labels: list[str], id: str):
+def store_text(text: str, labels: list[str]) -> bool:
     """
     テキストをベクトル化してPineconeに保存
     """
-    vector = classify_text(text)
-    metadata = {"text": text, "labels": labels}
+    vector = vectorize_text(text)
 
+    # 類似チェック
+    existing = index.query(vector=vector, top_k=1, include_metadata=True)
+    for match in existing.get("matches", []):
+        if match["score"] > 0.96:  # かなり近い
+            if match["metadata"].get("text") == text:
+                print("⚠️ 重複テキスト：保存スキップ")
+                return False
+
+    id = str(uuid.uuid4())
+    metadata = {"text": text, "labels": labels}
     index.upsert([(id, vector, metadata)])
-    print(vector)
-    print(id)
+    print(f"✅ 保存完了: {id},{text}")
+    return True
 
 def search_similar(text: str, labels: list[str], top_k=3):
     """
@@ -95,7 +83,7 @@ def search_similar(text: str, labels: list[str], top_k=3):
     渡されたテキストと全く同じ問題は類題として採用しない
     """
     # 渡されたテキストのベクトルを取得
-    vector = classify_text(text)
+    vector = vectorize_text(text)
     
     # ラベルでフィルタリング
     filter_conditions = {"labels": {"$in": labels}}
@@ -103,21 +91,15 @@ def search_similar(text: str, labels: list[str], top_k=3):
     # 類似検索を実行
     results = index.query(vector=vector, top_k=top_k, include_metadata=True, filter=filter_conditions)
     
-    # 渡されたテキストと一致する問題は除外
-    unique_results = []
-    
-    for match in results["matches"]:
-        if "text" not in match["metadata"]:
-            continue
-
-        if match["metadata"]["text"] != text:
-            unique_results.append({
-                "score": match["score"],
-                "text": match["metadata"]["text"],
-                "labels": match["metadata"].get("labels", [])  # ラベルも含める
-            })
-
-    return unique_results
+    return [
+        {
+            "text": match["metadata"].get("text", ""),
+            "labels": match["metadata"].get("labels", []),
+            "score": match["score"]
+        }
+        for match in results["matches"]
+        if match["metadata"].get("text") != text
+    ]
 
 
 
@@ -131,7 +113,7 @@ def search_similar(text: str, labels: list[str], top_k=3):
 #     """
 #     for label in labels:
 #         # ラベルに対応する埋め込みベクトルを生成
-#         vector = classify_text(label)  # classify_textでラベルの埋め込みを取得
+#         vector = vectorize_text(label)  # classify_textでラベルの埋め込みを取得
 #         # ラベルに対して自動生成したUUIDをIDとして使用
 #         generated_id = str(uuid.uuid4())  # 一意なIDを生成
 #         index.upsert([(generated_id, vector, {"labels": label})])  # ラベルをPineconeに保存
