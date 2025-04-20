@@ -49,11 +49,9 @@ async def classify_text(request: TextRequest):
 async def store_text_api(request: StoreRequest):
     text = request.text
     labels = request.labels
-    # IDはUUIDを使用
-    id = str(uuid.uuid4())
 
     # Pineconeに保存
-    store_text(text, labels, id)
+    store = store_text(text, labels)
 
 @app.post("/search")
 async def search_api(request: StoreRequest):
